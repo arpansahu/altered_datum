@@ -1,7 +1,7 @@
 import axios from 'axios';
 
-//const baseURL = 'http://127.0.0.1:8000/';
-const baseURL = 'https://react-backend-social.herokuapp.com/';
+// const baseURL = 'http://127.0.0.1:8004/';
+const baseURL = 'https://altered-datum-api.arpansahu.me';
 
 const axiosInstance = axios.create({
     baseURL: baseURL,
