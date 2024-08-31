@@ -7,7 +7,7 @@ const client_secret = process.env.REACT_APP_OAUTH_CLIENT_SECRET;
 const facebookLogin = (accesstoken) => {
 	// console.log(accesstoken);
 	axios
-		.post('https://altered-datum-api.arpansahu.me/auth/convert-token', {
+		.post('https://altered-datum.arpansahu.me/auth/convert-token', {
 			token: accesstoken,
 			backend: 'facebook',
 			grant_type: 'convert_token',

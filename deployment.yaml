@@ -1,0 +1,27 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: altered-datum-app
+  labels:
+    app: altered-datum
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: altered-datum
+  template:
+    metadata:
+      labels:
+        app: altered-datum
+    spec:
+      imagePullSecrets:
+        - name: harbor-registry-secret
+      containers:
+        - image: harbor.arpansahu.me/library/altered_datum:latest
+          name: altered-datum
+          envFrom:
+            - secretRef:
+                name: altered-datum-secret
+          ports:
+            - containerPort: 8001
+              name: gunicorn

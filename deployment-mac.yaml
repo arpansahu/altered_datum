@@ -1,0 +1,27 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: altered-datum-mac-app
+  labels:
+    app: altered-datum-mac
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: altered-datum-mac
+  template:
+    metadata:
+      labels:
+        app: altered-datum-mac
+    spec:
+      imagePullSecrets:
+        - name: harbor-registry-secret
+      containers:
+        - image: harbor.arpansahu.me/library/altered_datum_mac:latest
+          name: altered-datum-mac
+          envFrom:
+            - secretRef:
+                name: altered-datum-secret
+          ports:
+            - containerPort: 8001
+              name: gunicorn
