@@ -71,11 +71,17 @@ export default function Create() {
 			author: 1,
 			excerpt: formData.excerpt,
 			content: formData.content,
+		})
+		.then((response) => {
+			history.push({
+				pathname: '/admin/',
+			});
+			window.location.reload();
+		})
+		.catch((error) => {
+			console.error('Error editing post:', error);
+			// Handle error, e.g., display an error message to the user
 		});
-		history.push({
-			pathname: '/admin/',
-		});
-		window.location.reload();
 	};
 
 	const classes = useStyles();

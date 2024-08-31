@@ -1,8 +1,6 @@
 import axios from 'axios';
-
-const baseURL = 'https://altered-datum-api.arpansahu.me/api/';
-// const baseURL = 'http://127.0.0.1:8004/api/';
-
+const base_url = process.env.REACT_APP_API_BASE_URL;
+const baseURL =  base_url + '/api/';
 const axiosInstance = axios.create(
 
 	{

@@ -17,6 +17,10 @@ import { makeStyles } from '@material-ui/core/styles';
 import Container from '@material-ui/core/Container';
 import HeaderForGuest from '../headerforguest';
 
+const client_id = process.env.REACT_APP_OAUTH_CLIENT_ID;
+const client_secret = process.env.REACT_APP_OAUTH_CLIENT_SECRET;
+
+
 const useStyles = makeStyles((theme) => ({
 	paper: {
 		marginTop: theme.spacing(8),
@@ -73,9 +77,8 @@ export default function SignIn() {
 			grant_type: 'password',
 			username: formData.email,
 			password: formData.password,
-			client_id: 'w1m7AgQGkLKeb1eowfIY4ym3ofdSw5yLYWWBmEKv',
-			client_secret:
-				'YH5XsflhUkt9qetBYZL0gbsYN17EC0n5b0Lam4GIZ94ZIIaHbwT2psYd3ebbOzrF13xb6Fiuh73EK7uACIsQhNXwnvQDvpOT8QYuaNO0Jt8vLa1L0CxVLAa3Z1ySwSD8',
+			client_id: client_id,
+			client_secret: client_secret,
 		})
 		.then((res) => {
 			localStorage.setItem('access_token', res.data.access_token);

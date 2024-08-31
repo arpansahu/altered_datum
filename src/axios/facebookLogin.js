@@ -1,6 +1,9 @@
 import axios from 'axios';
 import { useHistory } from 'react-router-dom';
 
+const client_id = process.env.REACT_APP_OAUTH_CLIENT_ID;
+const client_secret = process.env.REACT_APP_OAUTH_CLIENT_SECRET;
+
 const facebookLogin = (accesstoken) => {
 	// console.log(accesstoken);
 	axios
@@ -8,9 +11,8 @@ const facebookLogin = (accesstoken) => {
 			token: accesstoken,
 			backend: 'facebook',
 			grant_type: 'convert_token',
-			client_id: 'w1m7AgQGkLKeb1eowfIY4ym3ofdSw5yLYWWBmEKv',
-			client_secret:
-				'YH5XsflhUkt9qetBYZL0gbsYN17EC0n5b0Lam4GIZ94ZIIaHbwT2psYd3ebbOzrF13xb6Fiuh73EK7uACIsQhNXwnvQDvpOT8QYuaNO0Jt8vLa1L0CxVLAa3Z1ySwSD8',
+			client_id: client_id,
+			client_secret: client_secret,
 		})
 		.then((res) => {
 			// console.log("access_token: "+res.data.access_token)
