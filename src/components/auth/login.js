@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axiosInstance from '../../axios/login';
 import FbLogin from 'react-facebook-login';
-import FacebookLogin from '../../axios/facebookLogin';
+// import FacebookLogin from '../../axios/facebookLogin';
 import { useHistory, Link } from 'react-router-dom';
 //MaterialUI
 import Avatar from '@material-ui/core/Avatar';
@@ -109,10 +109,10 @@ export default function SignIn() {
 		} );
 	};
 
-	const responseFacebook = async (response) => {
-		// console.log(response);
-		FacebookLogin(response.accessToken);
-	};
+	// const responseFacebook = async (response) => {
+	// 	// console.log(response);
+	// 	FacebookLogin(response.accessToken);
+	// };
 	
 	const classes = useStyles();
 
@@ -126,11 +126,11 @@ export default function SignIn() {
 				<Typography component="h1" variant="h5">
 					Sign in
 				</Typography>
-				<FbLogin
+				{/* <FbLogin
 						appId="466557594456589"
 						fields="name,email,picture"
 						callback={responseFacebook}
-				/>
+				/> */}
 				<form className={classes.form} noValidate>
 					<TextField
 						variant="outlined"
