@@ -1,0 +1,5 @@
+REACT_APP_API_BASE_URL=https://altered-datum-api.arpansahu.me
+# http://0.0.0.0:8004/
+# https://altered-datum.arpansahu.me
+REACT_APP_OAUTH_CLIENT_ID=w1m7AgQGkLKeb1eowfIY4ym3ofdSw5yLYWWBmEKv
+REACT_APP_OAUTH_CLIENT_SECRET=YH5XsflhUkt9qetBYZL0gbsYN17EC0n5b0Lam4GIZ94ZIIaHbwT2psYd3ebbOzrF13xb6Fiuh73EK7uACIsQhNXwnvQDvpOT8QYuaNO0Jt8vLa1L0CxVLAa3Z1ySwSD8
