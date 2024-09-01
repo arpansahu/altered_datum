@@ -10,6 +10,8 @@ COPY package*.json ./
 # Install dependencies
 RUN npm install
 
+RUN npm update @material-ui/core
+
 # Copy the rest of the application code
 COPY . .
 
