@@ -1,5 +1,5 @@
 # Use the official Node.js 16 image as the base image
-FROM node:16-alpine as build
+FROM node:16-alpine
 
 # Set the working directory in the container
 WORKDIR /app
@@ -8,19 +8,13 @@ WORKDIR /app
 COPY package*.json ./
 
 # Install dependencies
-RUN npm install --production
+RUN npm install
 
 # Copy the rest of the application code
 COPY . .
 
-# Build the React app for production
-RUN npm run build
-
-# Install a simple HTTP server to serve the built app
-RUN npm install -g serve
-
 # Expose port 8005 to the outside world
 EXPOSE 8005
 
-# Start the server to serve the built app on 0.0.0.0
-CMD ["serve", "-s", "build", "-l", "tcp://0.0.0.0:8005"]
+# Start the application using npm start on 0.0.0.0:8005
+CMD ["npm", "start"]
