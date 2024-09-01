@@ -88,10 +88,6 @@ pipeline {
                     // Log the image details
                     echo "Building Docker image: ${REGISTRY}/${REPOSITORY}:${IMAGE_TAG}"
 
-                    // Generating Node Modules
-
-                    sh "npm install"
-                    
                     // Build the Docker image
                     sh """
                     docker build -t ${REGISTRY}/${REPOSITORY}:${IMAGE_TAG} .
