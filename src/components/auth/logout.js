@@ -2,20 +2,27 @@ import React, { useEffect } from 'react';
 import axiosInstance from '../../axios';
 import { useHistory } from 'react-router-dom';
 
-export default function SignUp() {
+export default function Logout() {
 	const history = useHistory();
 
-
 	useEffect(() => {
-		const response = axiosInstance.post('user/logout/blacklist/', {
-			refresh_token: localStorage.getItem('refresh_token'),
-		});
-		localStorage.removeItem('access_token');
-		localStorage.removeItem('refresh_token');
-		axiosInstance.defaults.headers['Authorization'] = null;
+		const logout = async () => {
+			try {
+				await axiosInstance.post('user/logout/blacklist/', {
+					refresh_token: localStorage.getItem('refresh_token'),
+				});
+				localStorage.removeItem('access_token');
+				localStorage.removeItem('refresh_token');
+				axiosInstance.defaults.headers['Authorization'] = null;
+				history.push('/login');
+			} catch (error) {
+				console.error("Logout failed", error);
+				// Optionally handle the error, e.g., notify the user or retry
+			}
+		};
 
-		history.push('/login');
+		logout();
+	}, [history]);
 
-	});
-	return <div>Logout</div>;
+	return <div>Logging out...</div>;
 }

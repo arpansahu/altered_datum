@@ -1,16 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import axiosInstance from '../../axios';
-
-import { useHistory, Link } from 'react-router-dom';
-//MaterialUI
-import Avatar from '@material-ui/core/Avatar';
-import Button from '@material-ui/core/Button';
+import { useHistory } from 'react-router-dom';
+// MaterialUI
 import CssBaseline from '@material-ui/core/CssBaseline';
 import TextField from '@material-ui/core/TextField';
-import FormControlLabel from '@material-ui/core/FormControlLabel';
-import Checkbox from '@material-ui/core/Checkbox';
-// import Link from '@material-ui/core/Link';
-import Grid from '@material-ui/core/Grid';
+import Button from '@material-ui/core/Button';
 import Typography from '@material-ui/core/Typography';
 import { makeStyles } from '@material-ui/core/styles';
 import Container from '@material-ui/core/Container';
@@ -29,10 +23,6 @@ const useStyles = makeStyles((theme) => ({
 		flexDirection: 'column',
 		alignItems: 'center',
 	},
-	avatar: {
-		margin: theme.spacing(1),
-		backgroundColor: theme.palette.secondary.main,
-	},
 	form: {
 		width: '100%', // Fix IE 11 issue.
 		marginTop: theme.spacing(1),
@@ -40,172 +30,144 @@ const useStyles = makeStyles((theme) => ({
 	submit: {
 		margin: theme.spacing(3, 0, 2),
 	},
+	error: {
+		backgroundColor: theme.palette.error.dark,
+	},
+	success: {
+		backgroundColor: theme.palette.success.main,
+	},
 }));
 
 export default function SignIn() {
+	const classes = useStyles();
 	const history = useHistory();
-	
-	if (localStorage.getItem('access_token')){
-		window.location.reload();
-		history.push('/');
-	}
-	
-	const initialFormData = Object.freeze({
+
+	useEffect(() => {
+		if (localStorage.getItem('access_token')) {
+			history.push('/');
+		}
+	}, [history]);
+
+	const [formData, setFormData] = useState({
 		email: '',
 	});
 
-	const [formData, updateFormData] = useState(initialFormData);
-	const [errorData, updateErrorData] = useState({errorOpen: false,error: ""})
-	const errorClose = e => {
-		updateErrorData({errorOpen: false,error: ""});
-	};
-	const [message, updateMessage] = useState({messageOpen: false, data :""})
+	const [notification, setNotification] = useState({
+		open: false,
+		message: '',
+		variant: '',
+	});
 
-	const messageClose = e => {
-		updateMessage({messageOpen: false, data:""});
-	}
-
-	const handleChange = async (e) => {
-		updateFormData({
+	const handleChange = (e) => {
+		setFormData({
 			...formData,
 			[e.target.name]: e.target.value.trim(),
 		});
 	};
 
-	// const [appState, setAppState] = useState(false);
-
-
 	const handleSubmit = (e) => {
 		e.preventDefault();
-		// console.log(formData);
+		if (!formData.email) {
+			setNotification({
+				open: true,
+				message: "Email is required",
+				variant: "error",
+			});
+			return;
+		}
 
-		
-	axiosInstance
-		.post(`user/account/forgetpaassword/`, {
-			email: formData.email
-		})
-		.then((res) => {
-			console.log(res)
-			updateMessage({messageOpen:true, data:"Passsword reset linked sent Successfully"})
-		})
-		.catch(function (error) {
-			console.log(error.response.status)
-			if(error.response.status == 404){
-				updateErrorData({errorOpen:true, error:"Account with this email not found"})
-			}
-		} );
+		axiosInstance
+			.post(`user/account/forgetpassword/`, { email: formData.email })
+			.then((res) => {
+				setNotification({
+					open: true,
+					message: "Password reset link sent successfully",
+					variant: "success",
+				});
+			})
+			.catch((error) => {
+				if (error.response && error.response.status === 404) {
+					setNotification({
+						open: true,
+						message: "Account with this email not found",
+						variant: "error",
+					});
+				} else {
+					setNotification({
+						open: true,
+						message: "An error occurred. Please try again.",
+						variant: "error",
+					});
+				}
+			});
 	};
 
-
-	const classes = useStyles();
+	const handleClose = () => {
+		setNotification({ ...notification, open: false });
+	};
 
 	return (
 		<div className="App">
 			<HeaderForGuest />
-		<Container component="main" maxWidth="xs">
-			<CssBaseline />
-			<div className={classes.paper}>
-				<Typography component="h1" variant="h5">
-					Forget Password ?
-				</Typography>
-
-				<form className={classes.form} noValidate>
-					<TextField
-						variant="outlined"
-						margin="normal"
-						required
-						fullWidth
-						id="email"
-						label="Email Address"
-						name="email"
-						autoComplete="email"
-						label="email"
-						autoFocus
-						onChange={handleChange}	
-					/>
-
-					<Button
-						type="submit"
-						fullWidth
-						variant="contained"
-						color="primary"
-						className={classes.submit}
-						onClick={handleSubmit}
+			<Container component="main" maxWidth="xs">
+				<CssBaseline />
+				<div className={classes.paper}>
+					<Typography component="h1" variant="h5">
+						Forget Password?
+					</Typography>
+					<form className={classes.form} noValidate onSubmit={handleSubmit}>
+						<TextField
+							variant="outlined"
+							margin="normal"
+							required
+							fullWidth
+							id="email"
+							label="Email Address"
+							name="email"
+							autoComplete="email"
+							autoFocus
+							onChange={handleChange}
+						/>
+						<Button
+							type="submit"
+							fullWidth
+							variant="contained"
+							color="primary"
+							className={classes.submit}
+						>
+							Reset Password
+						</Button>
+					</form>
+					<Snackbar
+						open={notification.open}
+						autoHideDuration={3000}
+						onClose={handleClose}
+						anchorOrigin={{
+							vertical: "bottom",
+							horizontal: "center",
+						}}
 					>
-						Reset Password
-					</Button>
-					{errorData.error ? (
-						<Snackbar
-						variant="error"
-						key={errorData.error}
-						anchorOrigin={{
-							vertical: "bottom",
-							horizontal: "center"
-						}}
-						open={errorData.errorOpen}
-						onClose={errorClose}
-						autoHideDuration={3000}
-						>
 						<SnackbarContent
-							className={classes.error}
+							className={classes[notification.variant]}
 							message={
-							<div>
-								<span style={{ marginRight: "8px" }}>
-								<ErrorIcon fontSize="large" color="error" />
-								</span>
-								<span> {errorData.error} </span>
-							</div>
+								<div>
+									{notification.variant === "error" ? (
+										<ErrorIcon fontSize="large" />
+									) : (
+										<CheckCircleOutlineIcon fontSize="large" />
+									)}
+									<span style={{ marginLeft: "8px" }}>{notification.message}</span>
+								</div>
 							}
 							action={[
-							<IconButton
-								key="close"
-								aria-label="close"
-								onClick={errorClose}
-							>
-								<CloseIcon color="error" />
-							</IconButton>
+								<IconButton key="close" aria-label="close" onClick={handleClose}>
+									<CloseIcon />
+								</IconButton>,
 							]}
 						/>
-						</Snackbar>
-					) : null}
-					{message.data ? (
-						<Snackbar
-						variant="success"
-						severity="success"
-						key={message.data}
-						anchorOrigin={{
-							vertical: "bottom",
-							horizontal: "center"
-						}}
-						open={message.messageOpen}
-						onClose={messageClose}
-						autoHideDuration={3000}
-						>
-						<SnackbarContent
-							className={classes.success}
-							message={
-							<div style={{color:"green"}}>
-								<span style={{ marginRight: "8px" }}>
-								<CheckCircleOutlineIcon fontSize="large"   />
-								</span >
-								<span> {message.data} </span>
-							</div>
-							}
-							action={[
-							<IconButton
-								key="close"
-								aria-label="close"
-								onClick={messageClose}
-							>
-								<CloseIcon style={{color:"green"}} />
-							</IconButton>
-							]}
-						/>
-						</Snackbar>
-					) : null}
-				</form>
-			</div>
-		</Container>
+					</Snackbar>
+				</div>
+			</Container>
 		</div>
 	);
 }

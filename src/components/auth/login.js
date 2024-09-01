@@ -93,7 +93,9 @@ export default function SignIn() {
 			if (res.data.access){
 				window.location.reload();
 			}
+			
 			history.push('/');
+			window.location.reload(); // Reload the DOM after navigation
 
 		})
 		.catch(function (error) {
