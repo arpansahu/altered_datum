@@ -6,13 +6,6 @@ import Link from '@material-ui/core/Link';
 import Box from '@material-ui/core/Box';
 
 const useStyles = makeStyles((theme) => ({
-	'@global': {
-		ul: {
-			margin: 0,
-			padding: 0,
-			listStyle: 'none',
-		},
-	},
 	footer: {
 		marginTop: theme.spacing(8),
 		paddingTop: theme.spacing(3),
@@ -28,7 +21,7 @@ function Copyright() {
 	return (
 		<Typography variant="body2" color="textSecondary" align="center">
 			{'Copyright © '}
-			<Link color="inherit" href="#">
+			<Link color="inherit" href="#" title="Altered Datum - Homepage">
 				Altered Datum
 			</Link>{' '}
 			{new Date().getFullYear()}
@@ -37,18 +30,14 @@ function Copyright() {
 	);
 }
 
-
-
 function Footer() {
 	const classes = useStyles();
 	return (
-		<React.Fragment>
-			<Container maxWidth="md" component="footer" className={classes.footer}>
-				<Box mt={5}>
-					<Copyright />
-				</Box>
-			</Container>
-		</React.Fragment>
+		<Container maxWidth="md" component="footer" className={classes.footer}>
+			<Box mt={5}>
+				<Copyright />
+			</Box>
+		</Container>
 	);
 }
 

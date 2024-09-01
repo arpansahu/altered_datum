@@ -15,6 +15,7 @@ const useStyles = makeStyles((theme) => ({
 	},
 	link: {
 		margin: theme.spacing(1, 1.5),
+		textDecoration: 'none',
 	},
 	cardHeader: {
 		backgroundColor:
@@ -34,66 +35,84 @@ const useStyles = makeStyles((theme) => ({
 		textAlign: 'left',
 		marginBottom: theme.spacing(2),
 	},
+	card: {
+		padding: theme.spacing(2),
+	},
 }));
 
 const Search = () => {
 	const classes = useStyles();
-	const search = 'search';
 	const [appState, setAppState] = useState({
-		search: '',
 		posts: [],
+		loading: true,
+		error: null,
 	});
 
 	useEffect(() => {
-		axiosInstance.get(search + '/' + window.location.search).then((res) => {
-			const allPosts = res.data;
-			setAppState({ posts: allPosts });
-			console.log(res.data);
-		});
-	}, [setAppState]);
+		axiosInstance
+			.get('search/' + window.location.search)
+			.then((res) => {
+				const allPosts = res.data;
+				setAppState({ posts: allPosts, loading: false });
+			})
+			.catch((err) => {
+				setAppState({ posts: [], loading: false, error: err });
+				console.error('Error fetching posts:', err);
+			});
+	}, []);
+
+	if (appState.loading) {
+		return <p>Loading posts...</p>;
+	}
+
+	if (appState.error) {
+		return <p>Something went wrong. Please try again later.</p>;
+	}
+
+	if (appState.posts.length === 0) {
+		return <p>No posts found for your search query.</p>;
+	}
 
 	return (
-		<React.Fragment>
-			<Container maxWidth="md" component="main">
-				<Grid container spacing={5} alignItems="flex-end">
-					{appState.posts.map((post) => {
-						return (
-							// Enterprise card is full width at sm breakpoint
-							<Grid item key={post.id} xs={12} md={4}>
-								<Card className={classes.card}>
-									<Link
-										color="textPrimary"
-										href={'/post/' + post.slug}
-										className={classes.link}
-									>
-										<CardMedia
-											className={classes.cardMedia}
-											image="https://source.unsplash.com/random"
-											title="Image title"
-										/>
-									</Link>
-									<CardContent className={classes.cardContent}>
-										<Typography
-											gutterBottom
-											variant="h6"
-											component="h2"
-											className={classes.postTitle}
-										>
-											{post.title.substr(0, 50)}...
-										</Typography>
-										<div className={classes.postText}>
-											<Typography color="textSecondary">
-												{post.excerpt.substr(0, 40)}...
-											</Typography>
-										</div>
-									</CardContent>
-								</Card>
-							</Grid>
-						);
-					})}
-				</Grid>
-			</Container>
-		</React.Fragment>
+		<Container maxWidth="md" component="main">
+			<Grid container spacing={5} alignItems="flex-end">
+				{appState.posts.map((post) => (
+					<Grid item key={post.id} xs={12} md={4}>
+						<Card className={classes.card}>
+							<Link
+								color="textPrimary"
+								href={`/post/${post.slug}`}
+								className={classes.link}
+							>
+								<CardMedia
+									className={classes.cardMedia}
+									image={post.image || 'https://source.unsplash.com/random'}
+									title={post.title}
+								/>
+							</Link>
+							<CardContent className={classes.cardContent}>
+								<Typography
+									gutterBottom
+									variant="h6"
+									component="h2"
+									className={classes.postTitle}
+								>
+									{post.title.length > 50 ? `${post.title.substr(0, 50)}...` : post.title}
+								</Typography>
+								<div className={classes.postText}>
+									<Typography color="textSecondary">
+										{post.excerpt.length > 40
+											? `${post.excerpt.substr(0, 40)}...`
+											: post.excerpt}
+									</Typography>
+								</div>
+							</CardContent>
+						</Card>
+					</Grid>
+				))}
+			</Grid>
+		</Container>
 	);
 };
+
 export default Search;

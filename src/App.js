@@ -1,49 +1,44 @@
 import React, { useEffect, useState } from 'react';
-import './App.css';
+import { useHistory } from 'react-router-dom';
+import axiosInstance from './axios';
 import Posts from './components/posts/posts';
 import PostLoadingComponent from './components/posts/postLoading';
-import axiosInstance from './axios';
-import { useHistory } from 'react-router';
 import Header from './components/header';
 import ErrorBoundary from './components/ErrorBoundary';
 
 function App() {
-	const history = useHistory();
-	const PostLoading = PostLoadingComponent(Posts);
-	const [appState, setAppState] = useState({
-		loading: true,
-		posts: null,
-	});
-	const [temp, setTemp] = useState(0)
+  const history = useHistory();
+  const PostLoading = PostLoadingComponent(Posts);
+  const [appState, setAppState] = useState({
+    loading: true,
+    posts: null,
+  });
 
+  useEffect(() => {
+    const fetchPosts = async () => {
+      try {
+        const res = await axiosInstance.get();
+        setAppState({ loading: false, posts: res.data });
+      } catch (err) {
+        console.log('Inside Error', err);
+        if (err.response && err.response.status === 401) {
+          history.push('/login');
+        }
+      }
+    };
 
-	useEffect(() => {
-		// console.log("App.js")
-		axiosInstance.get().then((res) => {
-			const allPosts = res.data;
-			setAppState({ loading: false, posts: allPosts });
+    fetchPosts();
+  }, [history]);
 
-		})
-		.catch(err => {
-			// what now?
-			console.log("Inside Error", err);
-			window.location.reload();
-			// history.push('/login');
-		})
-		// console.log((appState))
-		;
-	}, [setAppState, localStorage.getItem('access_token')])
-
-
-	return (
-		<div className="App">
-			<ErrorBoundary>
-				<Header />
-			</ErrorBoundary>
-
-			<h1>Latest Posts</h1>
-			<PostLoading isLoading={appState.loading} posts={appState.posts} />
-		</div>
-	);
+  return (
+    <div className="App">
+      <ErrorBoundary>
+        <Header />
+      </ErrorBoundary>
+      <h1>Latest Posts</h1>
+      <PostLoading isLoading={appState.loading} posts={appState.posts} />
+    </div>
+  );
 }
+
 export default App;

@@ -1,33 +1,23 @@
-
-
-import Header from '../header';
-
 import React, { useState, useEffect } from 'react';
-
-//MaterialUI
+import axiosInstance from '../../axios';
+import Header from '../header';
+// MaterialUI
 import Avatar from '@material-ui/core/Avatar';
 import Button from '@material-ui/core/Button';
 import CssBaseline from '@material-ui/core/CssBaseline';
 import TextField from '@material-ui/core/TextField';
-import FormControlLabel from '@material-ui/core/FormControlLabel';
-import Checkbox from '@material-ui/core/Checkbox';
-// import Link from '@material-ui/core/Link';
 import Grid from '@material-ui/core/Grid';
 import Typography from '@material-ui/core/Typography';
 import { makeStyles } from '@material-ui/core/styles';
 import Container from '@material-ui/core/Container';
-import axiosInstance from '../../axios';
-import { ValidatorForm,TextValidator } from 'react-material-ui-form-validator';
-import VisibilityOffTwoToneIcon from "@material-ui/icons/VisibilityOffTwoTone";
-import VisibilityTwoToneIcon from "@material-ui/icons/VisibilityTwoTone";
-import { link, NavLink, useParams } from 'react-router-dom';
-import InputAdornment from '@material-ui/core/InputAdornment';
 import Snackbar from "@material-ui/core/Snackbar";
 import SnackbarContent from "@material-ui/core/SnackbarContent";
 import IconButton from "@material-ui/core/IconButton";
 import ErrorIcon from "@material-ui/icons/Error";
 import CheckCircleOutlineIcon from '@material-ui/icons/CheckCircleOutline';
 import CloseIcon from "@material-ui/icons/Close";
+import { NavLink } from 'react-router-dom';
+
 const useStyles = makeStyles((theme) => ({
 	paper: {
 		marginTop: theme.spacing(8),
@@ -46,291 +36,194 @@ const useStyles = makeStyles((theme) => ({
 	submit: {
 		margin: theme.spacing(3, 0, 2),
 	},
+	error: {
+		backgroundColor: theme.palette.error.dark,
+	},
+	success: {
+		backgroundColor: theme.palette.success.main,
+	},
 }));
 
 export default function FormPropsTextFields() {
-    const classes = useStyles();
-	const [id, updateId] = useState(null)
-
-    let initialFormData = Object.freeze({
-		password: '',
-		password_two: '',
+	const classes = useStyles();
+	const [id, setId] = useState(null);
+	const [formData, setFormData] = useState({
+		username: '',
+		about: '',
 	});
-	
-	const[user_obj, setUser_Obj] = useState({})
+	const [user, setUser] = useState({});
+	const [snackbar, setSnackbar] = useState({
+		open: false,
+		message: '',
+		variant: '',
+	});
 
-	useEffect(() =>
-		{
-			axiosInstance.get('user/account/')
+	useEffect(() => {
+		axiosInstance.get('user/account/')
 			.then((res) => {
 				const account = res.data;
-				// console.log(account)
-				setUser_Obj(
-					{	
-						is_superuser: account.is_staff,
-						username: account.username,
-						email: account.email,	
-				})
-				updateFormData({
+				setUser({
+					is_superuser: account.is_staff,
 					username: account.username,
-					about: account.about
-				})
-				updateId(account.id)
+					email: account.email,
+				});
+				setFormData({
+					username: account.username,
+					about: account.about || '',
+				});
+				setId(account.id);
 			})
 			.catch(err => {
-				console.log("Inside Error", err);
-			});	
-		}
-		, []
-	)
-	const [formData, updateFormData] = useState(initialFormData);
+				console.error("Error fetching user data:", err);
+			});
+	}, []);
 
-    const handleChange = async (e) => {
-        updateFormData({
-            ...formData,
-            [e.target.name]: e.target.value.trim(),
-        });
-    };
-
-	const handleChangeWithSpace = async (e) => {
-        updateFormData({
-            ...formData,
-            [e.target.name]: e.target.value,
-        });
-    };
-	const [passwordsMatch, updatePasswordsMatch] = useState({errorOpen: false,error: ""});
-
-	const errorClose = e => {
-		updatePasswordsMatch({errorOpen: false,error: ""});
-	};	
-
-	const [message, updateMessage] = useState({messageOpen: false, data :""})
-
-	const messageClose = e => {
-		updateMessage({messageOpen: false, data:""});
-	}
-
-	
+	const handleChange = (e) => {
+		setFormData({
+			...formData,
+			[e.target.name]: e.target.value,
+		});
+	};
 
 	const handleSubmit = (e) => {
 		e.preventDefault();
-		console.log(formData);
-		if(formData.username == null && formData.about == null
-			
-			){
-				// console.log("Inside first if")
-			updatePasswordsMatch({errorOpen: true,error: "Nothing to update"});
+		if (!formData.username && !formData.about) {
+			setSnackbar({
+				open: true,
+				message: "Nothing to update",
+				variant: 'error',
+			});
+			return;
 		}
-		else if(formData.about == null && formData.username)
-		{
-			updatePasswordsMatch({errorOpen: false,error: ""});
-			axiosInstance
-			.patch(`user/account/update/` + id + `/`, {
-				username: formData.username,
-			})
+
+		axiosInstance.patch(`user/account/update/${id}/`, formData)
 			.then((res) => {
-				console.log(res);
-				updateMessage({messageOpen: true,data: "Your account details updated Successfully"});
-				// console.log(res.data);
-				// console.log(res.statusText)
+				setSnackbar({
+					open: true,
+					message: "Your account details were updated successfully",
+					variant: 'success',
+				});
 			})
-			.catch(function (error) {
-				console.log(error);
-			} );
-		}
-		else if (formData.about  && formData.username == null){
-			updatePasswordsMatch({errorOpen: false,error: ""});
-			axiosInstance
-			.patch(`user/account/update/` + id + `/`, {
-				about: formData.about,
-			})
-			.then((res) => {
-				console.log(res);
-				updateMessage({messageOpen: true,data: "Your account details updated Successfully"});
-				// console.log(res.data);
-				// console.log(res.statusText)
-			})
-			.catch(function (error) {
-				console.log(error);
-			} );
-		}
-		else{
-			updatePasswordsMatch({errorOpen: false,error: ""});
-			axiosInstance
-			.patch(`user/account/update/` + id + `/`, {
-				about: formData.about,
-				username: formData.username,
-			})
-			.then((res) => {
-				console.log(res);
-				updateMessage({messageOpen: true,data: "Your account details updated Successfully"});
-				// console.log(res.data);
-				// console.log(res.statusText)
-			})
-			.catch(function (error) {
-				console.log(error);
-			} );
-		}
+			.catch((error) => {
+				setSnackbar({
+					open: true,
+					message: "Failed to update account details",
+					variant: 'error',
+				});
+				console.error("Error updating account details:", error);
+			});
 	};
 
-
-
-	const [hidePassword, setHidePassword] = useState(true);
-	const showPassword = () => {
-		// console.log("show passsword", + hidePassword)
-		setHidePassword(!hidePassword );
-		// console.log("After show passsword", + hidePassword)
+	const handleSnackbarClose = () => {
+		setSnackbar({
+			...snackbar,
+			open: false,
+		});
 	};
 
-	const [hidePassword_two, setHidePassword_Two] = useState(true);
-	const showPassword_two = () => {
-		// console.log("show passsword", + hidePassword_two)
-		setHidePassword_Two(!hidePassword_two );
-		// console.log("After show passsword", + hidePassword_two)
-	};
-  return (
-
-        <div className="App">
+	return (
+		<div className="App">
 			<Header />
-		<Container component="main" maxWidth="xs">
-			<CssBaseline />
-			<div className={classes.paper}  style={{whiteSpace:"pre-line"}}>
-				<Typography component="h1" variant="h5">
-					Account Details
-				</Typography>
-				
-				<ValidatorForm className={classes.form} noValidate>
-					<TextField
-						variant="outlined"
-						margin="normal"
-						required
-						fullWidth
-						id="email"
-						name="email"
-						autoComplete="email"
-						disabled
-                        value={user_obj.email}
-					/>
-					<TextField
-						variant="outlined"
-						margin="normal"
-						required
-						fullWidth
-						id="username"
-						name="username"
-						// label="Username"
-						placeholder={formData.username}
-						onChange={handleChange}
-                        value={formData.username}
-					/>
-					<TextField
-						variant="outlined"
-						margin="normal"
-						fullWidth
-						multiline
-						id="about"
-						name="about"
-						label="About"
-						autoFocus
-						placeholder={formData.about}
-						onChange={handleChangeWithSpace}
-                        value={formData.about}
-					 
-					/>
-				
-					{passwordsMatch.error ? (
-						<Snackbar
-						variant="error"
-						key={passwordsMatch.error}
+			<Container component="main" maxWidth="xs">
+				<CssBaseline />
+				<div className={classes.paper}>
+					<Typography component="h1" variant="h5">
+						Account Details
+					</Typography>
+
+					<form className={classes.form} noValidate onSubmit={handleSubmit}>
+						<TextField
+							variant="outlined"
+							margin="normal"
+							fullWidth
+							id="email"
+							name="email"
+							autoComplete="email"
+							disabled
+							value={user.email}
+						/>
+						<TextField
+							variant="outlined"
+							margin="normal"
+							fullWidth
+							id="username"
+							name="username"
+							placeholder="Username"
+							onChange={handleChange}
+							value={formData.username}
+						/>
+						<TextField
+							variant="outlined"
+							margin="normal"
+							fullWidth
+							multiline
+							id="about"
+							name="about"
+							label="About"
+							placeholder="Tell us about yourself"
+							onChange={handleChange}
+							value={formData.about}
+						/>
+
+						<Button
+							type="submit"
+							fullWidth
+							variant="contained"
+							color="primary"
+							className={classes.submit}
+							aria-label="Update Account details"
+						>
+							Update Account details
+						</Button>
+						<Button
+							fullWidth
+							variant="contained"
+							color="secondary"
+							className={classes.submit}
+							component={NavLink}
+							to="/account/passwordupdate"
+							aria-label="Update Password"
+						>
+							Update Password
+						</Button>
+					</form>
+
+					<Snackbar
+						open={snackbar.open}
+						autoHideDuration={3000}
+						onClose={handleSnackbarClose}
 						anchorOrigin={{
 							vertical: "bottom",
 							horizontal: "center"
 						}}
-						open={passwordsMatch.errorOpen}
-						onClose={errorClose}
-						autoHideDuration={3000}
-						>
+					>
 						<SnackbarContent
-							className={classes.error}
+							className={classes[snackbar.variant]}
 							message={
-							<div>
-								<span style={{ marginRight: "8px" }}>
-								<ErrorIcon fontSize="large" color="error" />
-								</span>
-								<span> {passwordsMatch.error} </span>
-							</div>
+								<div>
+									<span style={{ marginRight: "8px" }}>
+										{snackbar.variant === 'error' ? (
+											<ErrorIcon fontSize="large" />
+										) : (
+											<CheckCircleOutlineIcon fontSize="large" />
+										)}
+									</span>
+									<span>{snackbar.message}</span>
+								</div>
 							}
 							action={[
-							<IconButton
-								key="close"
-								aria-label="close"
-								onClick={errorClose}
-							>
-								<CloseIcon color="error" />
-							</IconButton>
+								<IconButton
+									key="close"
+									aria-label="close"
+									onClick={handleSnackbarClose}
+								>
+									<CloseIcon />
+								</IconButton>,
 							]}
 						/>
-						</Snackbar>
-					) : null}
-					{message.data ? (
-						<Snackbar
-						variant="success"
-						severity="success"
-						key={message.data}
-						anchorOrigin={{
-							vertical: "bottom",
-							horizontal: "center"
-						}}
-						open={message.messageOpen}
-						onClose={messageClose}
-						autoHideDuration={3000}
-						>
-						<SnackbarContent
-							className={classes.success}
-							message={
-							<div style={{color:"green"}}>
-								<span style={{ marginRight: "8px" }}>
-								<CheckCircleOutlineIcon fontSize="large"   />
-								</span >
-								<span> {message.data} </span>
-							</div>
-							}
-							action={[
-							<IconButton
-								key="close"
-								aria-label="close"
-								onClick={messageClose}
-							>
-								<CloseIcon style={{color:"green"}} />
-							</IconButton>
-							]}
-						/>
-						</Snackbar>
-					) : null}
-					<Button
-						type="submit"
-						fullWidth
-						variant="contained"
-						color="primary"
-						className={classes.submit}
-						onClick={handleSubmit}
-					>
-						Update Account details
-					</Button>
-					<Button
-						href="#"
-						color="primary"
-						variant="contained"
-						fullWidth
-						className={classes.submit}
-						component={NavLink}
-						to="/account/passwordupdate"
-					>
-						Update Password
-					</Button>
-				</ValidatorForm>
-			</div>
-		</Container>
+					</Snackbar>
+				</div>
+			</Container>
 		</div>
-  );
+	);
 }

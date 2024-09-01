@@ -14,23 +14,29 @@ function Admin() {
 	});
 
 	useEffect(() => {
-		axiosInstance.get().then((res) => {
-			const allPosts = res.data;
-			setAppState({ loading: false, posts: allPosts });
-		})
-		.catch(err => {
-			// what now?
-			console.log("Inside Error", err);
-			history.push('/login');
-		})
-		;
-	}, [setAppState, localStorage.getItem('access_token')])
+		const fetchPosts = async () => {
+			try {
+				const accessToken = localStorage.getItem('access_token');
+				const res = await axiosInstance.get('', {
+					headers: {
+						Authorization: `Bearer ${accessToken}`,
+					},
+				});
+				setAppState({ loading: false, posts: res.data });
+			} catch (err) {
+				console.error("Error fetching posts:", err);
+				history.push('/login');
+			}
+		};
+
+		fetchPosts();
+	}, [history]);
 
 	return (
 		<div className="App">
-			{/* <h1>Latest Posts</h1> */}
 			<PostLoading isLoading={appState.loading} posts={appState.posts} />
 		</div>
 	);
 }
+
 export default Admin;
