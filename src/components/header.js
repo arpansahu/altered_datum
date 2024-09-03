@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { AppBar, Toolbar, Typography, CssBaseline, Link, Button } from '@material-ui/core';
 import { makeStyles } from '@material-ui/core/styles';
-import { NavLink, useHistory, useLocation } from 'react-router-dom'; // Import useLocation
+import { NavLink, useNavigate, useLocation } from 'react-router-dom'; // Import useLocation
 import SearchBar from 'material-ui-search-bar';
 import axiosInstance from '../axios';
 import ArrowBackIcon from '@material-ui/icons/ArrowBack';
@@ -36,7 +36,7 @@ const useStyles = makeStyles((theme) => ({
 
 function Header() {
     const classes = useStyles();
-    const history = useHistory();
+    const history = useNavigate();
     const location = useLocation(); // Use useLocation to get the current path
 
     const [appState, setAppState] = useState({
@@ -90,7 +90,7 @@ function Header() {
     };
 
     const goBack = () => {
-        history.goBack();
+        history(-1);
     };
 
     return (

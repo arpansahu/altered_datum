@@ -1,9 +1,9 @@
 import React, { useEffect } from 'react';
 import axiosInstance from '../../axios';
-import { useHistory } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 
 export default function Logout() {
-	const history = useHistory();
+	const history = useNavigate();
 
 	useEffect(() => {
 		const logout = async () => {

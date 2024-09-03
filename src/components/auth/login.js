@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axiosInstance from '../../axios/login';
-import { useHistory, Link } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 // MaterialUI
 import Avatar from '@material-ui/core/Avatar';
 import Button from '@material-ui/core/Button';
@@ -39,7 +39,7 @@ const useStyles = makeStyles((theme) => ({
 
 export default function SignIn() {
 	const classes = useStyles();
-	const history = useHistory();
+	const navigate = useNavigate(); // Use useNavigate instead of history
 
 	const [formData, setFormData] = useState({
 		email: '',
@@ -49,9 +49,9 @@ export default function SignIn() {
 
 	useEffect(() => {
 		if (localStorage.getItem('access_token')) {
-			history.push('/');
+			navigate('/'); // Use navigate instead of history.push
 		}
-	}, [history]);
+	}, [navigate]);
 
 	const handleChange = (e) => {
 		setFormData({
@@ -82,8 +82,8 @@ export default function SignIn() {
 				axiosInstance.get('user/account/')
 					.then((res) => {
 						localStorage.setItem('account', JSON.stringify(res.data));
-						history.push('/');
-					    window.location.reload(); // Reload the DOM after navigation
+						navigate('/'); // Use navigate instead of history.push
+						window.location.reload(); // Reload the DOM after navigation
 					})
 					.catch((err) => {
 						console.error('Failed to fetch user account:', err);

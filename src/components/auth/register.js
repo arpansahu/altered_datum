@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import axiosInstance from '../../axios';
-import { useHistory } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 // MaterialUI
 import Avatar from '@material-ui/core/Avatar';
 import Button from '@material-ui/core/Button';
@@ -54,7 +54,7 @@ const useStyles = makeStyles((theme) => ({
 const PASSWORD_REGEX = "^(?=.*[a-z])(?=.*[A-Z])(?=.*[0-9])(?=.*[!@#\$%\^&\*])(?=.{8,20})";
 
 export default function SignUp() {
-    const history = useHistory();
+    const history = useNavigate();
     const classes = useStyles();
 
     const initialFormData = {

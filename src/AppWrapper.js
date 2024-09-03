@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Route, BrowserRouter as Router, Switch, Redirect, useHistory } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import App from './App';
 import Footer from './components/footer';
 import Register from './components/auth/register';
@@ -19,51 +19,34 @@ import NotActivated from './components/auth/notactivated';
 import ForgetPassword from './components/auth/forgetpassword';
 import Reset from './components/auth/reset';
 
+function ProtectedRoute({ element, ...rest }) {
+    const token_var = localStorage.getItem('access_token');
+    return token_var ? element : <Navigate to="/login" />;
+}
+
 function AppWrapper() {
-    const history = useHistory();
-    const [token_var, setToken_var] = useState(localStorage.getItem('access_token'));
-
-    useEffect(() => {
-        setToken_var(localStorage.getItem('access_token'));
-    }, []); // Runs only once when the component mounts
-
-    const ProtectedRoute = ({ component: Component, ...rest }) => (
-        <Route 
-            {...rest} 
-            render={(props) => 
-                token_var ? (
-                    <Component {...props} />
-                ) : (
-                    <Redirect to={{ pathname: '/login', state: { from: props.location } }} />
-                )
-            } 
-        />
-    );
-
     return (
         <Router>
-            <React.StrictMode>
-                <Switch>
-                    <ProtectedRoute exact path="/" component={App} />
-                    <ProtectedRoute exact path="/admin" component={Admin} />
-                    <ProtectedRoute exact path="/admin/create" component={Create} />
-                    <ProtectedRoute exact path="/admin/edit/:id" component={Edit} />
-                    <ProtectedRoute exact path="/admin/delete/:id" component={Delete} />
-                    <Route path="/register" component={Register} />
-                    <Route path="/login" component={Login} />
-                    <ProtectedRoute path="/logout" component={Logout} />
-                    <ProtectedRoute path="/post/:slug" component={Single} />
-                    <ProtectedRoute path="/search" component={Search} />
-                    <ProtectedRoute path="/testing" component={Testing} />
-                    <ProtectedRoute exact path="/account" component={Account} />
-                    <ProtectedRoute exact path="/account/passwordupdate" component={PasswordReset} />
-                    <Route exact path="/activate/:uidb64/:token" component={Activate} />
-                    <ProtectedRoute exact path="/unverified" component={NotActivated} />
-                    <Route exact path="/forget-password" component={ForgetPassword} />
-                    <Route exact path="/reset/:uidb64/:token" component={Reset} />
-                </Switch>
-                <Footer />
-            </React.StrictMode>
+            <Routes>
+                <Route path="/" element={<ProtectedRoute element={<App />} />} />
+                <Route path="/admin" element={<ProtectedRoute element={<Admin />} />} />
+                <Route path="/admin/create" element={<ProtectedRoute element={<Create />} />} />
+                <Route path="/admin/edit/:id" element={<ProtectedRoute element={<Edit />} />} />
+                <Route path="/admin/delete/:id" element={<ProtectedRoute element={<Delete />} />} />
+                <Route path="/register" element={<Register />} />
+                <Route path="/login" element={<Login />} />
+                <Route path="/logout" element={<ProtectedRoute element={<Logout />} />} />
+                <Route path="/post/:slug" element={<ProtectedRoute element={<Single />} />} />
+                <Route path="/search" element={<ProtectedRoute element={<Search />} />} />
+                <Route path="/testing" element={<ProtectedRoute element={<Testing />} />} />
+                <Route path="/account" element={<ProtectedRoute element={<Account />} />} />
+                <Route path="/account/passwordupdate" element={<ProtectedRoute element={<PasswordReset />} />} />
+                <Route path="/activate/:uidb64/:token" element={<Activate />} />
+                <Route path="/unverified" element={<ProtectedRoute element={<NotActivated />} />} />
+                <Route path="/forget-password" element={<ForgetPassword />} />
+                <Route path="/reset/:uidb64/:token" element={<Reset />} />
+            </Routes>
+            <Footer />
         </Router>
     );
 }

@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { useHistory } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 
 const client_id = process.env.REACT_APP_OAUTH_CLIENT_ID;
 const client_secret = process.env.REACT_APP_OAUTH_CLIENT_SECRET;

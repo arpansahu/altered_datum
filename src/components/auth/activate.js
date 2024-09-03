@@ -1,6 +1,6 @@
 import HeaderForGuest from '../headerforguest';
 import React, { useState, useEffect } from 'react';
-import { useParams, useHistory } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 // MaterialUI
 import CssBaseline from '@material-ui/core/CssBaseline';
 import { makeStyles } from '@material-ui/core/styles';
@@ -27,7 +27,7 @@ export default function ActivateAccount() {
 	const { uidb64, token } = useParams();
 	const [message, setMessage] = useState('');
 	const [error, setError] = useState(false);
-	const history = useHistory();
+	const history = useNavigate();
 
 	useEffect(() => {
 		let isMounted = true; // To avoid state update if the component is unmounted

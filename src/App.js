@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useHistory } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import axiosInstance from './axios';
 import Posts from './components/posts/posts';
 import PostLoadingComponent from './components/posts/postLoading';
@@ -7,7 +7,7 @@ import Header from './components/header';
 import ErrorBoundary from './components/ErrorBoundary';
 
 function App() {
-  const history = useHistory();
+  const history = useNavigate();
   const PostLoading = PostLoadingComponent(Posts);
   const [appState, setAppState] = useState({
     loading: true,
@@ -22,7 +22,7 @@ function App() {
       } catch (err) {
         console.log('Inside Error', err);
         if (err.response && err.response.status === 401) {
-          history.push('/login');
+          history('/login');
         }
       }
     };

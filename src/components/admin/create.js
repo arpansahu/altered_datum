@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import axiosInstance from '../../axios';
-import { useHistory } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 //MaterialUI
 import Avatar from '@material-ui/core/Avatar';
 import Button from '@material-ui/core/Button';
@@ -56,7 +56,7 @@ export default function Create() {
 	}
 	//
 
-	const history = useHistory();
+	const history = useNavigate();
 	const initialFormData = Object.freeze({
 		title: '',
 		slug: '',
@@ -98,16 +98,16 @@ export default function Create() {
 		formData.append('content', postData.content);
 		formData.append('image', postimage.image[0]);
 		axiosInstance.post('admin/create/', formData)
-		.then((response) => {
-			history.push({
-				pathname: '/admin/',
+			.then((response) => {
+				history.push({
+					pathname: '/admin/',
+				});
+				window.location.reload();
+			})
+			.catch((error) => {
+				console.error('Error creating post:', error);
+				// Handle error, e.g., display an error message to the user
 			});
-			window.location.reload();
-		})
-		.catch((error) => {
-			console.error('Error creating post:', error);
-			// Handle error, e.g., display an error message to the user
-		});
 	};
 
 	// const config = { headers: { 'Content-Type': 'multipart/form-data' } };
@@ -132,68 +132,68 @@ export default function Create() {
 		<div className="App">
 			<Header />
 			<Container component="main" maxWidth="xs">
-			<CssBaseline />
-			<div className={classes.paper}>
-				{/* <Avatar className={classes.avatar}></Avatar> */}
-				<Typography component="h1" variant="h5">
-					Create New Post
-				</Typography>
-				<form className={classes.form} noValidate>
-					<Grid container spacing={2}>
-						<Grid item xs={12}>
-							<TextField
-								variant="outlined"
-								required
-								fullWidth
-								id="title"
-								label="Post Title"
-								name="title"
-								autoComplete="title"
-								onChange={handleChange}
-							/>
-						</Grid>
-						<Grid item xs={12}>
-							<TextField
-								variant="outlined"
-								required
-								fullWidth
-								id="excerpt"
-								label="Post Excerpt"
-								name="excerpt"
-								autoComplete="excerpt"
-								onChange={handleChange}
-								multiline
-								rows={4}
-							/>
-						</Grid>
-						<Grid item xs={12}>
-							<TextField
-								variant="outlined"
-								required
-								fullWidth
-								id="slug"
-								label="slug"
-								name="slug"
-								autoComplete="slug"
-								value={postData.slug}
-								onChange={handleChange}
-							/>
-						</Grid>
-						<Grid item xs={12}>
-							<TextField
-								variant="outlined"
-								required
-								fullWidth
-								id="content"
-								label="content"
-								name="content"
-								autoComplete="content"
-								onChange={handleChange}
-								multiline
-								rows={4}
-							/>
-						</Grid>
-						{/* <input
+				<CssBaseline />
+				<div className={classes.paper}>
+					{/* <Avatar className={classes.avatar}></Avatar> */}
+					<Typography component="h1" variant="h5">
+						Create New Post
+					</Typography>
+					<form className={classes.form} noValidate>
+						<Grid container spacing={2}>
+							<Grid item xs={12}>
+								<TextField
+									variant="outlined"
+									required
+									fullWidth
+									id="title"
+									label="Post Title"
+									name="title"
+									autoComplete="title"
+									onChange={handleChange}
+								/>
+							</Grid>
+							<Grid item xs={12}>
+								<TextField
+									variant="outlined"
+									required
+									fullWidth
+									id="excerpt"
+									label="Post Excerpt"
+									name="excerpt"
+									autoComplete="excerpt"
+									onChange={handleChange}
+									multiline
+									rows={4}
+								/>
+							</Grid>
+							<Grid item xs={12}>
+								<TextField
+									variant="outlined"
+									required
+									fullWidth
+									id="slug"
+									label="slug"
+									name="slug"
+									autoComplete="slug"
+									value={postData.slug}
+									onChange={handleChange}
+								/>
+							</Grid>
+							<Grid item xs={12}>
+								<TextField
+									variant="outlined"
+									required
+									fullWidth
+									id="content"
+									label="content"
+									name="content"
+									autoComplete="content"
+									onChange={handleChange}
+									multiline
+									rows={4}
+								/>
+							</Grid>
+							{/* <input
 							accept="image/*"
 							className={classes.input}
 							id="post-image"
@@ -201,43 +201,43 @@ export default function Create() {
 							name="image"
 							type="file"
 						/> */}
-					
-						
-						<Button
-							align='center'
-							variant="contained"
-							component="label"
-							style={{margin: '0 auto'}}
-							>
-							<input
-							accept="image/*"
-							// className={classes.input}
-							id="post-image"
-							onChange={handleChange}
-							name="image"
-							type="file"
-							style={{ display: 'none'}}
-							/>
-							<IconButton color="primary" aria-label="upload picture" component="span">
-								<PhotoCamera />
-							</IconButton>
-						</Button>
 
-					</Grid>
-					
-					<Button
-						type="submit"
-						fullWidth
-						variant="contained"
-						color="primary"
-						className={classes.submit}
-						onClick={handleSubmit}
-					>
-						Create Post
-					</Button>
-				</form>
-			</div>
-		</Container>
+
+							<Button
+								align='center'
+								variant="contained"
+								component="label"
+								style={{ margin: '0 auto' }}
+							>
+								<input
+									accept="image/*"
+									// className={classes.input}
+									id="post-image"
+									onChange={handleChange}
+									name="image"
+									type="file"
+									style={{ display: 'none' }}
+								/>
+								<IconButton color="primary" aria-label="upload picture" component="span">
+									<PhotoCamera />
+								</IconButton>
+							</Button>
+
+						</Grid>
+
+						<Button
+							type="submit"
+							fullWidth
+							variant="contained"
+							color="primary"
+							className={classes.submit}
+							onClick={handleSubmit}
+						>
+							Create Post
+						</Button>
+					</form>
+				</div>
+			</Container>
 		</div>
 	);
 }

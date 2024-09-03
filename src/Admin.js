@@ -3,10 +3,10 @@ import './App.css';
 import Posts from './components/admin/posts';
 import PostLoadingComponent from './components/posts/postLoading';
 import axiosInstance from './axios';
-import { useHistory } from 'react-router';
+import { useNavigate } from 'react-router-dom';
 
 function Admin() {
-	const history = useHistory();
+	const history = useNavigate();
 	const PostLoading = PostLoadingComponent(Posts);
 	const [appState, setAppState] = useState({
 		loading: true,
