@@ -1,17 +1,17 @@
-version: '3'
+version: '3.8'
 
 services:
   web:
-    build:  # This section will be used when running locally
+    build:  # This section will build the image based on the Dockerfile
       context: .
       dockerfile: Dockerfile
     image: harbor.arpansahu.me/library/altered_datum:latest
     env_file: ./.env
-    command: >
-      sh -c "npm run build && serve -s build -l tcp://0.0.0.0:8005"
-    container_name: altered_datum
-    volumes:
-      - .:/app
+    container_name: altered_datum_dev
     ports:
-      - "8005:8005"
+      - "8005:8005"  # Maps the container port to your local machine port
+    volumes:
+      - .:/app  # Mount the current directory to /app in the container
+      - /app/node_modules  # Avoid overwriting node_modules in the container
     restart: unless-stopped
+    command: sh -c "npm run build && serve -s build -l tcp://0.0.0.0:8005"
