@@ -7,7 +7,7 @@ services:
       dockerfile: Dockerfile
     image: harbor.arpansahu.me/library/altered_datum:latest
     env_file: ./.env
-    container_name: altered_datum_dev
+    container_name: altered_datum
     ports:
       - "8005:8005"  # Maps the container port to your local machine port
     volumes:
