@@ -34,7 +34,7 @@ awake the Backend by visiting the backend link
 
 
 admin login details:--
-email: admin@arpansahu.me
+email: admin@arpansahu.space
 password: showmecode
 ## License
 

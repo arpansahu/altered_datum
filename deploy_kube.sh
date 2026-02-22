@@ -15,7 +15,7 @@ if [ -z "$HARBOR_USERNAME" ] || [ -z "$HARBOR_PASSWORD" ]; then
 fi
 
 # Default Variables
-HARBOR_URL="harbor.arpansahu.me/library"
+HARBOR_URL="harbor.arpansahu.space/library"
 LOCAL_IMAGE="altered_datum"
 TAG="latest"
 NAMESPACE="default"
