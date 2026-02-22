@@ -105,50 +105,55 @@ pipeline {
             }
         }
         stage('Retrieve Image Tag from Build Job') {
-            when {
-                expression { params.DEPLOY}
-            }
             steps {
                 script {
-                    echo "Retrieve image tag from ${env.BUILD_PROJECT_NAME}"
+                    // Check if IMAGE_TAG parameter was provided
+                    if (params.IMAGE_TAG) {
+                        echo "Using provided image tag: ${params.IMAGE_TAG}"
+                        env.IMAGE_TAG = params.IMAGE_TAG
+                    } else {
+                        echo "No image tag provided. Retrieving from ${env.BUILD_PROJECT_NAME}"
 
-                    // Construct the API URL for the latest build
-                    def api_url = "https://${env.JENKINS_DOMAIN}/job/${env.BUILD_PROJECT_NAME}/lastSuccessfulBuild/api/json"
+                        // Construct the API URL for the latest successful build
+                        def api_url = "https://${env.JENKINS_DOMAIN}/job/${env.BUILD_PROJECT_NAME}/lastSuccessfulBuild/api/json"
 
-                    // Log the API URL for debugging purposes
-                    echo "Hitting API URL: ${api_url}"
-                    
-                    withCredentials([usernamePassword(credentialsId: 'jenkins-admin-credentials', usernameVariable: 'JENKINS_USER', passwordVariable: 'JENKINS_PASS')]) {
-                        // Execute the curl command to retrieve the JSON response
-                        echo "usernameVariable: ${JENKINS_USER}, passwordVariable: ${JENKINS_PASS}"
-                        def buildInfoJson = sh(script: "curl -u ${JENKINS_USER}:${JENKINS_PASS} ${api_url}", returnStdout: true).trim()
+                        echo "Hitting API URL: ${api_url}"
+                        
+                        withCredentials([usernamePassword(credentialsId: 'jenkins-admin-credentials', usernameVariable: 'JENKINS_USER', passwordVariable: 'JENKINS_TOKEN')]) {
+                            // Execute the curl command to retrieve the JSON response
+                            def buildInfoJson = sh(script: "curl -u ${JENKINS_USER}:${JENKINS_TOKEN} ${api_url}", returnStdout: true).trim()
 
-                        // Log the raw JSON response for debugging
-                        echo "Raw JSON response: ${buildInfoJson}"
+                            // Log the raw JSON response for debugging
+                            echo "Raw JSON response: ${buildInfoJson}"
 
-                        def imageTag = sh(script: """
-                            echo '${buildInfoJson}' | grep -oP '"number":\\s*\\K\\d+' | head -n 1
-                        """, returnStdout: true).trim()
+                            // Extract the build number using grep
+                            def imageTag = sh(script: """
+                                echo '${buildInfoJson}' | grep -o '"id":"[0-9]*"' | head -1 | tr -dc '0-9'
+                            """, returnStdout: true).trim()
 
-                        echo "Retrieved image tag (build number): ${imageTag}"
+                            echo "Retrieved image tag (build number): ${imageTag}"
 
-
-                        // Check if REGISTRY, REPOSITORY, and imageTag are all defined and not empty
-                        if (env.REGISTRY && env.REPOSITORY && imageTag) {
-                            if (params.DEPLOY_TYPE == 'kubernetes') {
-                                // Replace the placeholder in the deployment YAML
-                                sh "sed -i 's|:latest|:${imageTag}|g' ${WORKSPACE}/deployment.yaml"
-                            }   
-                            
-                            if (params.DEPLOY_TYPE == 'docker') {
-                                // Ensure the correct image tag is used in the docker-compose.yml
-                                sh """
-                                sed -i 's|image: .*|image: ${env.REGISTRY}/${env.REPOSITORY}:${imageTag}|' docker-compose.yml
-                                """
-                            }
-                        } else {
-                            echo "One or more required variables (REGISTRY, REPOSITORY, imageTag) are not defined or empty. Skipping docker-compose.yml update."
+                            // Update IMAGE_TAG environment variable
+                            env.IMAGE_TAG = imageTag
                         }
+                    }
+
+                    echo "Using image tag: ${env.IMAGE_TAG}"
+
+                    if (env.REGISTRY && env.REPOSITORY && env.IMAGE_TAG) {
+                        if (params.DEPLOY_TYPE == 'kubernetes') {
+                            // Replace the placeholder in the deployment YAML
+                            sh "sed -i 's|:latest|:${env.IMAGE_TAG}|g' ${WORKSPACE}/deployment.yaml"
+                        }
+                        
+                        if (params.DEPLOY_TYPE == 'docker') {
+                            // Update docker-compose.yml with correct image tag
+                            sh """
+                            sed -i 's|image: .*|image: ${env.REGISTRY}/${env.REPOSITORY}:${env.IMAGE_TAG}|' docker-compose.yml
+                            """
+                        }
+                    } else {
+                        echo "One or more required variables (REGISTRY, REPOSITORY, IMAGE_TAG) are not defined. Skipping image update."
                     }
                 }
             }
@@ -160,168 +165,144 @@ pipeline {
             steps {
                 script {
                     if (params.DEPLOY_TYPE == 'docker') {
+                        // Deploy using Docker Compose
+                        sh 'docker compose down'
+                        sh "docker rm -f ${env.ENV_PROJECT_NAME} || true"  // Remove any orphaned container
+                        sh 'docker compose pull'
+                        sh 'docker compose up -d'
 
-                        // Copy the .env file to the workspace
-                        sh "sudo cp /root/projectenvs/${env.ENV_PROJECT_NAME}/.env ${env.WORKSPACE}/"
-
-                        sh 'docker-compose down'
-                        sh 'docker-compose pull'
-                        sh 'docker-compose up -d'
-
-                        sleep 60
-
+                        // Verify the container is running
                         def containerRunning = sh(script: "docker ps -q -f name=${env.ENV_PROJECT_NAME}", returnStdout: true).trim()
                         if (!containerRunning) {
                             error "Container ${env.ENV_PROJECT_NAME} is not running"
                         } else {
                             echo "Container ${env.ENV_PROJECT_NAME} is running"
+                            // Health check with retry mechanism (migrations + collectstatic take time)
                             sh """
-                                # Fetch HTTP status code
-                                HTTP_STATUS=\$(curl -s -o /dev/null -w "%{http_code}" -L http://0.0.0.0:${env.DOCKER_PORT})
-                                echo "HTTP Status: \$HTTP_STATUS"
+                                set +e  # Don't exit on error
+                                MAX_RETRIES=20
+                                RETRY_DELAY=30
+                                ATTEMPT=0
+                                HTTP_STATUS=000
                                 
-                                # Update Nginx configuration if status code is 200 (OK)
-                                if [ "\$HTTP_STATUS" -eq 200 ]; then
-                                    sudo sed -i 's|proxy_pass .*;|proxy_pass http://0.0.0.0:${env.DOCKER_PORT};|' ${env.NGINX_CONF_PATH}
-                                    sudo nginx -s reload
-                                    echo 'Nginx configuration updated and reloaded successfully.'
-                                else
-                                    echo 'Service not available. Nginx configuration not updated.'
+                                echo "⏳ Waiting for Django app to start (migrations + collectstatic running)..."
+                                
+                                while [ \$ATTEMPT -lt \$MAX_RETRIES ]; do
+                                    ATTEMPT=\$((ATTEMPT + 1))
+                                    echo "Health check attempt \$ATTEMPT/\$MAX_RETRIES..."
+                                    HTTP_STATUS=\$(curl -s -o /dev/null -w "%{http_code}" -L http://localhost:${env.DOCKER_PORT} || echo "000")
+                                    echo "HTTP Status: \$HTTP_STATUS"
+                                    
+                                    if [ "\$HTTP_STATUS" = "200" ] || [ "\$HTTP_STATUS" = "302" ]; then
+                                        echo "✅ Service is responding! HTTP Status: \$HTTP_STATUS"
+                                        break
+                                    fi
+                                    
+                                    if [ \$ATTEMPT -lt \$MAX_RETRIES ]; then
+                                        echo "⏳ Service not ready yet. Waiting \${RETRY_DELAY}s before retry..."
+                                        sleep \$RETRY_DELAY
+                                    fi
+                                done
+                                
+                                set -e  # Re-enable exit on error
+                                
+                                # Final check
+                                if [ "\$HTTP_STATUS" != "200" ] && [ "\$HTTP_STATUS" != "302" ]; then
+                                    echo "❌ Service failed to start after \$MAX_RETRIES attempts"
+                                    docker logs ${env.ENV_PROJECT_NAME} || true
+                                    exit 1
                                 fi
-
-                                # Scale down Kubernetes deployment if it exists and is running
-                                replicas=\$(kubectl get deployment ${env.PROJECT_NAME_WITH_DASH}-app -o=jsonpath='{.spec.replicas}') || true
-                                if [ "\$replicas" != "" ] && [ \$replicas -gt 0 ]; then
+                                
+                                # Update Nginx configuration
+                                sudo sed -i 's|proxy_pass .*;|proxy_pass http://0.0.0.0:${env.DOCKER_PORT};|' ${env.NGINX_CONF_PATH}
+                                sudo nginx -s reload
+                                echo '✅ Nginx configuration updated and reloaded successfully.'
+                                
+                                # Scale down Kubernetes deployment if running
+                                replicas=\$(kubectl get deployment ${env.PROJECT_NAME_WITH_DASH}-app -o=jsonpath='{.spec.replicas}' 2>/dev/null || echo "0")
+                                if [ "\$replicas" != "" ] && [ "\$replicas" -gt 0 ]; then
                                     kubectl scale deployment ${env.PROJECT_NAME_WITH_DASH}-app --replicas=0
-                                    echo 'Kubernetes deployment scaled down successfully.'
-                                else
-                                    echo 'No running Kubernetes deployment to scale down.'
+                                    echo '✅ Kubernetes deployment scaled down successfully.'
                                 fi
                             """
                         }
                     } else if (params.DEPLOY_TYPE == 'kubernetes') {
-                        // Copy the .env file to the workspace
-                        sh "sudo cp /root/projectenvs/${env.ENV_PROJECT_NAME}/.env ${env.WORKSPACE}/"
+                        // Kubernetes deployment
+                        echo "Deploying to Kubernetes..."
 
-                        // Check if the file is copied successfully
-                        if (fileExists("${env.WORKSPACE}/.env")) {
-                            echo ".env file copied successfully."
+                        // Verify Kubernetes configuration
+                        sh 'kubectl cluster-info'
+                        
+                        // Delete existing secret if it exists
+                        sh "kubectl delete secret ${env.PROJECT_NAME_WITH_DASH}-secret || true"
+
+                        // Deploy to Kubernetes
+                        sh """
+                        kubectl create secret generic ${env.PROJECT_NAME_WITH_DASH}-secret --from-env-file=${WORKSPACE}/.env
+                        kubectl apply -f ${WORKSPACE}/service.yaml
+                        kubectl apply -f ${WORKSPACE}/deployment.yaml
+                        """
+                        
+                        echo "Waiting for deployment to be ready..."
+                        sleep 60
+
+                        // Check deployment status
+                        sh "kubectl describe deployment/${env.PROJECT_NAME_WITH_DASH}-app"
+                        
+                        // Verify service and get NodePort
+                        def nodePort = sh(script: "kubectl get service ${env.PROJECT_NAME_WITH_DASH}-service -o=jsonpath='{.spec.ports[0].nodePort}'", returnStdout: true).trim()
+                        echo "Service NodePort: ${nodePort}"
+
+                        // Get cluster IP address
+                        def clusterIP = sh(script: "kubectl get nodes -o=jsonpath='{.items[0].status.addresses[0].address}'", returnStdout: true).trim()
+                        echo "Cluster IP: ${clusterIP}"
+
+                        // Verify service accessibility and update Nginx
+                        sh """
+                            HTTP_STATUS=\$(curl -s -o /dev/null -w "%{http_code}" -L http://${clusterIP}:${nodePort})
+                            echo "HTTP Status: \$HTTP_STATUS"
                             
-                            // Verify Kubernetes configuration
-                            sh 'kubectl cluster-info'
-                            
-                            // Print current directory
-                            sh 'pwd'
-                            
-                            // Delete existing secret if it exists
-                            sh """
-                            kubectl delete secret ${env.PROJECT_NAME_WITH_DASH}-secret || true
-                            """
+                            if [ "\$HTTP_STATUS" -eq 200 ] || [ "\$HTTP_STATUS" -eq 302 ]; then
+                                echo "Service is reachable at http://${clusterIP}:${nodePort}"
 
-                            // Delete the existing service and deployment
-                            // sh """
-                            // kubectl delete service ${env.PROJECT_NAME_WITH_DASH}-service || true
-                            // kubectl scale deployment ${env.PROJECT_NAME_WITH_DASH}-app --replicas=0 || true
-                            // kubectl delete deployment ${env.PROJECT_NAME_WITH_DASH}-app || true
-                            // """
-
-                            // Deploy to Kubernetes
-                            sh """
-                            kubectl create secret generic ${env.PROJECT_NAME_WITH_DASH}-secret --from-env-file=${WORKSPACE}/.env
-                            kubectl apply -f ${WORKSPACE}/service.yaml
-                            kubectl apply -f ${WORKSPACE}/deployment.yaml
-                            """
-                            
-                            // Wait for a few seconds to let the app start
-                            sleep 60
-
-                            // Check deployment status
-                            sh """
-                            kubectl rollout status deployment/${env.PROJECT_NAME_WITH_DASH}-app
-                            """
-                            
-                            // Verify service and get NodePort
-                            def nodePort = sh(script: "kubectl get service ${env.PROJECT_NAME_WITH_DASH}-service -o=jsonpath='{.spec.ports[0].nodePort}'", returnStdout: true).trim()
-                            echo "Service NodePort: ${nodePort}"
-
-                            // Get cluster IP address
-                            def clusterIP = sh(script: "kubectl get nodes -o=jsonpath='{.items[0].status.addresses[0].address}'", returnStdout: true).trim()
-                            echo "Cluster IP: ${clusterIP}"
-
-                            // Verify if the service is accessible and delete the Docker container if accessible and update nginx configuration
-                            sh """
-                                HTTP_STATUS=\$(curl -s -o /dev/null -w "%{http_code}" -L http://${clusterIP}:${nodePort})
-                                echo "HTTP Status: \$HTTP_STATUS"
+                                echo "Updating Nginx configuration at ${env.NGINX_CONF_PATH}..."
+                                sudo sed -i 's|proxy_pass .*;|proxy_pass http://${clusterIP}:${nodePort};|' ${env.NGINX_CONF_PATH}
                                 
-                                if [ "\$HTTP_STATUS" -eq 200 ]; then
-                                    echo "Service is reachable at http://${clusterIP}:${nodePort}"
-
-                                    echo "Updating Nginx configuration at ${env.NGINX_CONF_PATH}..."
-                                    sudo sed -i 's|proxy_pass .*;|proxy_pass http://${clusterIP}:${nodePort};|' ${env.NGINX_CONF_PATH}
-                                    
-                                    if [ \$? -ne 0 ]; then
-                                        echo "Failed to update Nginx configuration"
-                                        exit 1
-                                    fi
-                                    
-                                    echo "Reloading Nginx..."
-                                    sudo nginx -s reload
-                                    
-                                    if [ \$? -ne 0 ]; then
-                                        echo "Failed to reload Nginx"
-                                        exit 1
-                                    fi
-                                    
-                                    echo "Nginx reloaded successfully"
-                                    
-                                    DOCKER_CONTAINER=\$(docker ps -q -f name=${env.ENV_PROJECT_NAME})
-                                    
-                                    if [ "\$DOCKER_CONTAINER" ]; then
-                                        echo "Docker container ${env.ENV_PROJECT_NAME} is running. Removing it..."
-                                        docker rm -f ${env.ENV_PROJECT_NAME}
-                                        
-                                        if [ \$? -ne 0 ]; then
-                                            echo "Failed to remove Docker container ${env.ENV_PROJECT_NAME}"
-                                            exit 1
-                                        fi
-                                        
-                                    else
-                                        echo "Docker container ${env.ENV_PROJECT_NAME} is not running. Skipping removal"
-                                    fi
-
-                                else
-                                    echo "Service is not reachable at http://${clusterIP}:${nodePort}. HTTP Status: \$HTTP_STATUS"
-                                    exit 1
-                                fi
-                            """
-                        } else {
-                            error ".env file not found in the workspace."
-                        }
+                                echo "Reloading Nginx..."
+                                sudo nginx -s reload
+                                
+                                echo "Nginx reloaded successfully"
+                                
+                                # Stop Docker Compose if running
+                                docker compose down || true
+                                
+                                echo "Kubernetes deployment successful."
+                            else
+                                echo "Service health check failed. HTTP Status: \$HTTP_STATUS"
+                                kubectl logs -l app=${env.PROJECT_NAME_WITH_DASH} --tail=100 || true
+                                exit 1
+                            fi
+                        """
+                    } else {
+                        error "Invalid DEPLOY_TYPE: ${params.DEPLOY_TYPE}"
                     }
-                    currentBuild.description = 'DEPLOYMENT_EXECUTED'
                 }
             }
         }
-        stage('Sentry release') {
+        stage('Sentry Release') {
             when {
                 expression { params.DEPLOY }
             }
             steps {
                 script {
-                    echo "Sentry Release ..."
-
-                    sh """
-                        # Get the current git commit hash
+                    withCredentials([string(credentialsId: 'sentry-auth-token', variable: 'SENTRY_AUTH_TOKEN')]) {
+                        sh """
                         VERSION=\$(git rev-parse HEAD)
-
-                        sentry-cli releases -o ${env.SENTRY_ORG} -p ${env.SENTRY_PROJECT} new \$VERSION
-
-                        # Associate commits with the release
-                        sentry-cli releases -o ${env.SENTRY_ORG} -p ${env.SENTRY_PROJECT} set-commits --auto \$VERSION
-
-                        # Deploy the release (optional step for marking the release as deployed)
-                        sentry-cli releases -o ${env.SENTRY_ORG} -p ${env.SENTRY_PROJECT} deploys \$VERSION new -e production
-                    """
+                        sentry-cli releases -o ${env.SENTRY_ORG} -p ${env.SENTRY_PROJECT} new \$VERSION || true
+                        sentry-cli releases -o ${env.SENTRY_ORG} -p ${env.SENTRY_PROJECT} set-commits --auto \$VERSION || true
+                        sentry-cli releases -o ${env.SENTRY_ORG} -p ${env.SENTRY_PROJECT} finalize \$VERSION || true
+                        """
+                    }
                 }
             }
         }
@@ -329,33 +310,32 @@ pipeline {
     post {
         success {
             script {
-                if (currentBuild.description == 'DEPLOYMENT_EXECUTED') {
-                    sh """curl -s \
-                    -X POST \
-                    --user $MAIL_JET_API_KEY:$MAIL_JET_API_SECRET \
-                    https://api.mailjet.com/v3.1/send \
-                    -H "Content-Type:application/json" \
-                    -d '{
-                        "Messages":[
-                                {
-                                        "From": {
-                                                "Email": "$MAIL_JET_EMAIL_ADDRESS",
-                                                "Name": "ArpanSahuOne Jenkins Notification"
-                                        },
-                                        "To": [
-                                                {
-                                                        "Email": "$MY_EMAIL_ADDRESS",
-                                                        "Name": "Development Team"
-                                                }
-                                        ],
-                                        "Subject": "Jenkins Build Pipeline your project ${currentBuild.fullDisplayName} Ran Successfully",
-                                        "TextPart": "Hola Development Team, your project ${currentBuild.fullDisplayName} is now deployed",
-                                        "HTMLPart": "<h3>Hola Development Team, your project ${currentBuild.fullDisplayName} is now deployed </h3> <br> <p> Build Url: ${env.BUILD_URL}  </p>"
-                                }
-                        ]
-                    }'"""
-                }
-                // Trigger the common_readme job on success when last commit is not Automatic Update from common_readme
+                sh """curl -s \
+                -X POST \
+                --user ${env.MAIL_JET_API_KEY}:${env.MAIL_JET_API_SECRET} \
+                https://api.mailjet.com/v3.1/send \
+                -H "Content-Type:application/json" \
+                -d '{
+                    "Messages":[
+                            {
+                                    "From": {
+                                            "Email": "${env.MAIL_JET_EMAIL_ADDRESS}",
+                                            "Name": "ArpanSahuOne Jenkins Notification"
+                                    },
+                                    "To": [
+                                            {
+                                                    "Email": "${env.MY_EMAIL_ADDRESS}",
+                                                    "Name": "Development Team"
+                                            }
+                                    ],
+                                    "Subject": "Jenkins Build Pipeline your project ${currentBuild.fullDisplayName} Ran Successfully",
+                                    "TextPart": "Hola Development Team, your project ${currentBuild.fullDisplayName} is now deployed",
+                                    "HTMLPart": "<h3>Hola Development Team, your project ${currentBuild.fullDisplayName} is now deployed </h3> <br> <p> Build Url: ${env.BUILD_URL}  </p>"
+                            }
+                    ]
+                }' || true"""
+
+                // Trigger common_readme job
                 def commitMessage = sh(script: "git log -1 --pretty=%B", returnStdout: true).trim()
                 if (!commitMessage.contains("Automatic Update")) {
                     def expandedProjectUrl = "https://github.com/arpansahu/${env.ENV_PROJECT_NAME}"
@@ -363,36 +343,40 @@ pipeline {
                         string(name: 'project_git_url', value: expandedProjectUrl),
                         string(name: 'environment', value: 'prod')
                     ], wait: false
-                } else {
-                    echo "Skipping common_readme job trigger due to commit message: ${commitMessage}"
-                }            
+                }
             }
         }
         failure {
-            sh """curl -s \
-            -X POST \
-            --user $MAIL_JET_API_KEY:$MAIL_JET_API_SECRET \
-            https://api.mailjet.com/v3.1/send \
-            -H "Content-Type:application/json" \
-            -d '{
-                "Messages":[
-                        {
-                                "From": {
-                                        "Email": "$MAIL_JET_EMAIL_ADDRESS",
-                                        "Name": "ArpanSahuOne Jenkins Notification"
-                                },
-                                "To": [
-                                        {
-                                                "Email": "$MY_EMAIL_ADDRESS",
-                                                "Name": "Developer Team"
-                                        }
-                                ],
-                            "Subject": "Jenkins Build Pipeline your project ${currentBuild.fullDisplayName} Ran Failed",
-                            "TextPart": "Hola Development Team, your project ${currentBuild.fullDisplayName} deployment failed",
-                            "HTMLPart": "<h3>Hola Development Team, your project ${currentBuild.fullDisplayName} is not deployed, Build Failed </h3> <br> <p> Build Url: ${env.BUILD_URL}  </p>"
-                        }
-                ]
-            }'"""
+            script {
+                sh """curl -s \
+                -X POST \
+                --user ${env.MAIL_JET_API_KEY}:${env.MAIL_JET_API_SECRET} \
+                https://api.mailjet.com/v3.1/send \
+                -H "Content-Type:application/json" \
+                -d '{
+                    "Messages":[
+                            {
+                                    "From": {
+                                            "Email": "${env.MAIL_JET_EMAIL_ADDRESS}",
+                                            "Name": "ArpanSahuOne Jenkins Notification"
+                                    },
+                                    "To": [
+                                            {
+                                                    "Email": "${env.MY_EMAIL_ADDRESS}",
+                                                    "Name": "Developer Team"
+                                            }
+                                    ],
+                                "Subject": "Jenkins Build Pipeline your project ${currentBuild.fullDisplayName} Failed",
+                                "TextPart": "Hola Development Team, your project ${currentBuild.fullDisplayName} deployment failed",
+                                "HTMLPart": "<h3>Hola Development Team, your project ${currentBuild.fullDisplayName} is not deployed, Build Failed </h3> <br> <p> Build Url: ${env.BUILD_URL}  </p>"
+                            }
+                    ]
+                }' || true"""
+            }
+        }
+        always {
+            // Cleanup
+            sh 'rm -f .env || true'
         }
     }
 }
